@@ -1,83 +1,69 @@
 # What's On SG
 
-A Singapore events aggregator. One backend feeds both a website and a mobile app.
+An aggregator for live events in Singapore — concerts, theatre, art, and museum exhibitions — pulled from multiple ticketing sources into a single, searchable feed. One backend powers both a web and (planned) mobile client.
+
+I built this to solve a real gap: there's no single place to see everything happening across the city, since the data is scattered across ticketing platforms and individual venue sites.
 
 ## Architecture
 
-```
-Sources → Aggregator (daily cron) → Database → API → Web + Mobile apps
-```
-
-The **database is the seam**. The aggregator only writes; the apps only read.
-Each piece runs and deploys independently.
+The database is the seam between two independent halves. A scheduled aggregator writes to it; the API and web client only read from it. That decoupling means sources and clients can change without touching each other.
 
 ```
-whatson-sg/
-├── db/schema.sql              Postgres schema (the events table)
-├── packages/core/             Shared Event type + normalization logic
-├── services/
-│   ├── aggregator/            Fetches from sources, dedupes, upserts (the "auto-update" engine)
-│   │   └── src/sources/       One module per source — add venues here
-│   └── api/                   Read-only REST API the apps call
-└── apps/web/                  Next.js website (mobile app reuses the same API)
+Sources → Aggregator → Postgres (Supabase) → API → Web client
 ```
 
-## Quick start
+- **Aggregator** — fetches from each source, normalises to a common shape, deduplicates, and upserts. Idempotent, so it's safe to run on a schedule.
+- **API** — read-only REST endpoint with category filtering and search.
+- **Web** — Next.js front end that renders the feed.
+
+Each source is a self-contained adapter, so adding a new venue or platform is one file plus one line in the registry.
+
+## Stack
+
+TypeScript throughout. Next.js (web), Express (API), PostgreSQL via Supabase, `pg` for database access. Ticketmaster Discovery API as the first live source.
+
+## Setup
+
+Requires Node.js (LTS) and a PostgreSQL database. I use Supabase, but any Postgres works.
 
 ```bash
-# 1. Install
+git clone https://github.com/nabhonil-sarkar/whatson-sg.git
+cd whatson-sg
 npm install
-
-# 2. Set up the database
-cp .env.example .env          # fill in DATABASE_URL
-npm run db:init               # creates the events table
-
-# 3. Run the aggregator once (works with zero API keys — uses the mock source)
-npm run aggregate
-
-# 4. Start the API
-npm run api                   # http://localhost:3001/api/events
-
-# 5. Start the website
-npm run web                   # http://localhost:3000
 ```
 
-## Adding a real source
+Create a `.env` file in the project root:
 
-1. Create `services/aggregator/src/sources/yoursource.ts` exporting
-   `fetchEvents(): Promise<NormalizedEvent[]>`.
-2. Register it in `services/aggregator/src/index.ts` (one import + one array entry).
-3. Convert the source's payload into `NormalizedEvent`. That's it — dedup,
-   validation, and category classification are handled for you.
-
-Real adapters to add, in rough priority order:
-- **Ticketmaster** (included, needs a free API key) — concerts, big shows
-- **Eventbrite** (API) — community and smaller events
-- **SISTIC** (scrape) — the big SG ticketing site; theatre and arts
-- **Esplanade / National Gallery / ArtScience** (scrape) — exhibits
-
-## Making it auto-update
-
-The aggregator is a plain script. Schedule it however you deploy:
-
-```cron
-# Daily at 4am Singapore time
-0 4 * * *  cd /path/to/whatson-sg && npm run aggregate >> /var/log/whatson.log 2>&1
+```
+DATABASE_URL=your_postgres_connection_string
+TICKETMASTER_API_KEY=your_key        # optional — runs on sample data without it
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-On serverless: a Supabase Edge Function or a GitHub Action on a schedule
-works just as well. The aggregator is idempotent, so running it more often
-is always safe — it never creates duplicates.
+Create the schema by running the contents of `db/schema.sql` against your database (the Supabase SQL editor works, or `psql`).
 
-## The mobile app
+## Running it
 
-The website talks to the API over plain HTTP/JSON. A React Native (Expo) app
-calls the exact same `/api/events` endpoint and renders the same data — so
-you reuse all the backend work. Start the app once the web version feels right.
+```bash
+npm run aggregate   # fetch events into the database
+npm run api         # start the API on :3001
+npm run web         # start the web client on :3000
+```
 
-## One honest note on coverage
+Run the aggregator once to populate the database, then start the API and web client in separate terminals. Without a Ticketmaster key the aggregator falls back to sample data, so the app is runnable out of the box.
 
-"All upcoming events" is a goal, not a starting state. APIs cover the ticketed
-mainstream cleanly; small gallery openings and indie gigs need per-venue
-scrapers added over time. Launch with the APIs, grow coverage from there. A
-"submit an event" form is a cheap way to fill gaps early.
+## Project layout
+
+```
+db/                  Database schema
+packages/core/       Shared types and normalisation logic
+services/aggregator/ Source adapters and the aggregation job
+services/api/        REST API
+apps/web/            Next.js front end
+```
+
+## Roadmap
+
+- Additional sources (Eventbrite, SISTIC, direct venue scrapers)
+- Scheduled aggregation in the cloud for hands-off daily updates
+- Deployment and a React Native client sharing the same API
