@@ -1,0 +1,100 @@
+:root {
+  --bg: #0f0f0e;
+  --card: #1a1a18;
+  --border: #2c2c2a;
+  --text: #ececea;
+  --muted: #8a8a85;
+  --accent: #6b5cff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.header { margin-bottom: 24px; }
+.header h1 { font-size: 24px; font-weight: 600; }
+.subtitle { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+.search {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+.search:focus { outline: none; border-color: var(--accent); }
+
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.chip {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip--active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+.card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.datechip {
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.datechip .day { font-size: 16px; font-weight: 600; line-height: 1; }
+.datechip .mon { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.body { flex: 1; min-width: 0; }
+.titlerow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.title { font-size: 15px; font-weight: 500; }
+.tag { font-size: 10px; padding: 1px 8px; border-radius: 20px; text-transform: capitalize; }
+.venue { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.meta { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+
+.cta {
+  align-self: center;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.cta:hover { border-color: var(--accent); }
+
+.muted { color: var(--muted); padding: 16px 0; }
+
+.cat--music   { background: #2a2342; color: #c7bcff; }
+.cat--theatre { background: #3a2420; color: #f0a78b; }
+.cat--art     { background: #143028; color: #7fd9b8; }
+.cat--museum  { background: #112a3f; color: #8fc4f0; }
+.cat--other   { background: #2c2c2a; color: #b4b2a9; }
