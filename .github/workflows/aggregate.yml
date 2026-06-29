@@ -1,0 +1,28 @@
+name: Daily event aggregation
+
+on:
+  schedule:
+    # 20:00 UTC = 04:00 Singapore time. Cron is always in UTC.
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run the aggregator
+        run: npm run aggregate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
