@@ -14,7 +14,9 @@ interface Event {
 }
 
 const CATEGORIES = ["all", "music", "theatre", "art", "museum"] as const;
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+// The API now lives inside this same Next.js app, so we call it on the same
+// origin with a relative path — no separate server or base URL needed.
+const API = "";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-SG", {
