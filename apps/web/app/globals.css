@@ -184,6 +184,7 @@ body {
   background: transparent;
   border: none;
   font-family: inherit;
+  color: inherit;
   padding: 18px 0;
   cursor: pointer;
   transition: opacity 0.15s ease;
@@ -206,6 +207,7 @@ body {
   line-height: 1.25;
   letter-spacing: -0.01em;
   margin-bottom: 4px;
+  color: var(--ink);
   transition: color 0.15s ease;
 }
 .event-where { display: block; font-size: 14px; color: var(--ink-soft); }
