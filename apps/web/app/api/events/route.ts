@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const category = searchParams.get("category");
   const search = searchParams.get("search");
-  const limit = Math.min(Number(searchParams.get("limit")) || 50, 200);
+  const limit = Math.min(Number(searchParams.get("limit")) || 50, 500);
 
   const conditions = ["starts_at >= now()"];
   const values: unknown[] = [];

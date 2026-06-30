@@ -119,7 +119,7 @@ export default function EventsPage() {
     const params = new URLSearchParams();
     if (category !== "all") params.set("category", category);
     if (search) params.set("search", search);
-    params.set("limit", "100");
+    params.set("limit", "300");
 
     setLoading(true);
     const t = setTimeout(() => {
@@ -132,17 +132,35 @@ export default function EventsPage() {
     return () => clearTimeout(t);
   }, [category, search]);
 
-  // Build the strip of the next 14 days, marking which have events so empty
-  // days can be shown dimmed and aren't misleading to tap.
+  // Build the date strip spanning from today to the last loaded event, so its
+  // length matches the data we actually have — every day shown is real. Capped
+  // so a stray far-future event can't create an enormous strip.
   const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const daysWithEvents = new Set(events.map((e) => dayKeyOf(e.starts_at)));
-  const stripDays = Array.from({ length: 14 }, (_, i) => {
+
+  let lastEventDate = todayStart;
+  for (const e of events) {
+    const d = new Date(e.starts_at);
+    if (d > lastEventDate) lastEventDate = d;
+  }
+  const spanDays = Math.min(
+    Math.max(
+      14,
+      Math.round((lastEventDate.getTime() - todayStart.getTime()) / 86400000) + 1,
+    ),
+    120,
+  );
+
+  const stripDays = Array.from({ length: spanDays }, (_, i) => {
     const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
     const key = dayKeyOf(d);
     return {
       key,
       weekday: d.toLocaleDateString("en-SG", { weekday: "short" }),
       date: d.getDate(),
+      month: d.toLocaleDateString("en-SG", { month: "short" }),
+      isFirst: d.getDate() === 1 || i === 0,
       hasEvents: daysWithEvents.has(key),
     };
   });
@@ -223,16 +241,20 @@ export default function EventsPage() {
             <span className="day-wd">All</span>
             <span className="day-num">★</span>
           </button>
-          {stripDays.map((d) => (
-            <button
-              key={d.key}
-              className={`day-chip ${selectedDay === d.key ? "day-chip--on" : ""} ${!d.hasEvents ? "day-chip--empty" : ""}`}
-              onClick={() => setSelectedDay(selectedDay === d.key ? null : d.key)}
-              disabled={!d.hasEvents}
-            >
-              <span className="day-wd">{d.weekday}</span>
-              <span className="day-num">{d.date}</span>
-            </button>
+          {stripDays.map((d, i) => (
+            <span className="day-cell" key={d.key}>
+              {d.date === 1 && i !== 0 && (
+                <span className="month-marker">{d.month}</span>
+              )}
+              <button
+                className={`day-chip ${selectedDay === d.key ? "day-chip--on" : ""} ${!d.hasEvents ? "day-chip--empty" : ""}`}
+                onClick={() => setSelectedDay(selectedDay === d.key ? null : d.key)}
+                disabled={!d.hasEvents}
+              >
+                <span className="day-wd">{d.weekday}</span>
+                <span className="day-num">{d.date}</span>
+              </button>
+            </span>
           ))}
         </div>
       )}
