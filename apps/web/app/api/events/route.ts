@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const { rows } = await pool.query(
-      `select id, title, category, venue, address, latitude, longitude,
+      `select id, title, description, category, venue, address, latitude, longitude,
               starts_at, ends_at, price_min, price_max, currency,
               ticket_url, image_url, source
        from events

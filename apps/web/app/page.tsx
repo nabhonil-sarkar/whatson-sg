@@ -5,11 +5,15 @@ import { useEffect, useState } from "react";
 interface Event {
   id: string;
   title: string;
+  description: string | null;
   category: string;
   venue: string;
   address: string | null;
   starts_at: string;
+  ends_at: string | null;
   price_min: number | null;
+  price_max: number | null;
+  currency: string | null;
   ticket_url: string | null;
   source: string;
 }
@@ -42,6 +46,35 @@ function formatPrice(min: number | null): string {
   return min === 0 ? "Free" : `from $${min}`;
 }
 
+// Fuller date line for the expanded panel, e.g. "Friday, 3 July 2026".
+function formatFullDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-SG", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+}
+
+// Full price range for the panel: "$48 – $120", "Free", or "" when unknown.
+function formatPriceRange(min: number | null, max: number | null): string {
+  if (min === null) return "";
+  if (min === 0 && (max === null || max === 0)) return "Free";
+  if (max && max > min) return `$${min} – $${max}`;
+  return `from $${min}`;
+}
+
+// A Google search that reliably surfaces the official page, reviews, etc.
+// Always works, even when we have no ticket link for the event.
+function googleSearchUrl(e: Event): string {
+  const q = encodeURIComponent(`${e.title} ${e.venue} Singapore`);
+  return `https://www.google.com/search?q=${q}`;
+}
+
+// Google Maps search for the venue — uses the full address when we have it,
+// otherwise the venue name. Lets people see the location and get directions.
+function googleMapsUrl(e: Event): string {
+  const place = e.address ? `${e.venue}, ${e.address}` : `${e.venue}, Singapore`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+}
+
 // Group events under human date headings like "Today", "Tomorrow",
 // then "Thursday, 3 July". The date grouping is the editorial spine.
 function dateKey(iso: string): string {
@@ -64,6 +97,7 @@ export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Match the visitor's system setting on first load, and respond if it changes.
   useEffect(() => {
@@ -160,30 +194,89 @@ export default function EventsPage() {
                 {g.items.map((e) => {
                   const area = neighbourhood(e.address);
                   const price = formatPrice(e.price_min);
+                  const open = expandedId === e.id;
                   return (
-                    <li className="event" key={e.id}>
-                      <div className="event-time">{formatTime(e.starts_at)}</div>
-                      <div className="event-main">
-                        <h3 className="event-title">{e.title}</h3>
-                        <p className="event-where">
-                          {e.venue}
-                          {area && <span className="event-area"> · {area}</span>}
-                        </p>
-                      </div>
-                      <div className="event-meta">
-                        <span className={`cat cat--${e.category}`}>{e.category}</span>
-                        {price && <span className="event-price">{price}</span>}
-                        {e.ticket_url && (
-                          <a
-                            className="event-link"
-                            href={e.ticket_url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Tickets ↗
-                          </a>
-                        )}
-                      </div>
+                    <li className={`event ${open ? "event--open" : ""}`} key={e.id}>
+                      <button
+                        className="event-row"
+                        onClick={() => setExpandedId(open ? null : e.id)}
+                        aria-expanded={open}
+                      >
+                        <span className="event-time">{formatTime(e.starts_at)}</span>
+                        <span className="event-main">
+                          <span className="event-title">{e.title}</span>
+                          <span className="event-where">
+                            {e.venue}
+                            {area && <span className="event-area"> · {area}</span>}
+                          </span>
+                        </span>
+                        <span className="event-meta">
+                          <span className={`cat cat--${e.category}`}>{e.category}</span>
+                          {price && <span className="event-price">{price}</span>}
+                          <span className={`event-chevron ${open ? "event-chevron--up" : ""}`}>
+                            ↓
+                          </span>
+                        </span>
+                      </button>
+
+                      {open && (
+                        <div className="event-detail">
+                          <dl className="detail-facts">
+                            <div>
+                              <dt>When</dt>
+                              <dd>
+                                {formatFullDate(e.starts_at)}, {formatTime(e.starts_at)}
+                                {e.ends_at &&
+                                  formatFullDate(e.ends_at) !== formatFullDate(e.starts_at) &&
+                                  ` – ${formatFullDate(e.ends_at)}`}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Where</dt>
+                              <dd>{e.address ? `${e.venue}, ${e.address}` : e.venue}</dd>
+                            </div>
+                            {formatPriceRange(e.price_min, e.price_max) && (
+                              <div>
+                                <dt>Price</dt>
+                                <dd>{formatPriceRange(e.price_min, e.price_max)}</dd>
+                              </div>
+                            )}
+                          </dl>
+
+                          {e.description && (
+                            <p className="detail-desc">{e.description}</p>
+                          )}
+
+                          <div className="detail-links">
+                            {e.ticket_url && (
+                              <a
+                                className="detail-link detail-link--primary"
+                                href={e.ticket_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Get tickets ↗
+                              </a>
+                            )}
+                            <a
+                              className="detail-link"
+                              href={googleMapsUrl(e)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Search map ↗
+                            </a>
+                            <a
+                              className="detail-link"
+                              href={googleSearchUrl(e)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Search the web ↗
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
