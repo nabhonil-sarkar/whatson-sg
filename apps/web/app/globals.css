@@ -67,6 +67,9 @@ body {
   color: var(--accent);
 }
 .theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -76,11 +79,16 @@ body {
   background: transparent;
   border: 1px solid var(--rule-strong);
   border-radius: 100px;
-  padding: 5px 14px;
+  padding: 5px 14px 5px 11px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .theme-toggle:hover { color: var(--ink); border-color: var(--ink); }
+.toggle-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
 
 .wordmark {
   font-family: 'Fraunces', Georgia, serif;
