@@ -1,16 +1,18 @@
 import "dotenv/config";
 import { Pool } from "pg";
 import {
-  NormalizedEvent, contentHash, isValid,
+  NormalizedEvent, contentHash, isValid, dedupeAcrossSources,
 } from "../../../packages/core/src/event.js";
 
 import * as ticketmaster from "./sources/ticketmaster.js";
+import * as sgculturepass from "./sources/sgculturepass.js";
 import * as mock from "./sources/mock.js";
 
 // Register every source here. Adding a new venue = one import + one line.
 const SOURCES: Array<{ name: string; fetchEvents: () => Promise<NormalizedEvent[]> }> = [
-  { name: "ticketmaster", fetchEvents: ticketmaster.fetchEvents },
-  { name: "mock",         fetchEvents: mock.fetchEvents },
+  { name: "ticketmaster",   fetchEvents: ticketmaster.fetchEvents },
+  { name: "sgculturepass",  fetchEvents: sgculturepass.fetchEvents },
+  { name: "mock",           fetchEvents: mock.fetchEvents },
 ];
 
 const pool = new Pool({
@@ -52,20 +54,31 @@ async function upsert(e: NormalizedEvent): Promise<"inserted" | "updated" | "unc
 export async function runAggregation(): Promise<void> {
   const tally = { inserted: 0, updated: 0, unchanged: 0, dropped: 0, errors: 0 };
 
+  // Phase 1: gather all events from every source.
+  const all: NormalizedEvent[] = [];
   for (const src of SOURCES) {
     try {
       const events = await src.fetchEvents();
       console.log(`[${src.name}] fetched ${events.length}`);
       for (const e of events) {
         if (!isValid(e)) { tally.dropped++; continue; }
-        const result = await upsert(e);
-        tally[result]++;
+        all.push(e);
       }
     } catch (err) {
       tally.errors++;
       console.error(`[${src.name}] failed:`, err instanceof Error ? err.message : err);
       // One source failing must not abort the others.
     }
+  }
+
+  // Phase 2: collapse the same real-world event appearing in multiple sources.
+  const { events: deduped, removed } = dedupeAcrossSources(all);
+  console.log(`Cross-source dedup: removed ${removed} duplicate(s), ${deduped.length} remain`);
+
+  // Phase 3: write the survivors.
+  for (const e of deduped) {
+    const result = await upsert(e);
+    tally[result]++;
   }
 
   console.log("Aggregation complete:", tally);
