@@ -25,9 +25,11 @@ TypeScript throughout. Next.js (App Router) for the web app and its API routes, 
 
 - **Daily auto-update** — a GitHub Action runs the aggregator every morning, so the live site stays current without anyone touching it.
 - **Editorial interface** — events grouped under date headings (Today, Tomorrow, then by weekday), with a serif/sans typographic pairing.
+- **Responsive layout** — a two-column layout with a standing sidebar on desktop that collapses to a single column on mobile.
 - **Light and dark mode** — light by default, with a toggle.
-- **Expandable detail** — clicking an event opens an in-place panel with full date, location, price range, and links out to tickets, a map, and a web search.
-- **Search and filtering** — by category, and by free-text over event titles and venues.
+- **Date strip** — a slim row of upcoming days for filtering the listings to a single day; days without events are shown inactive.
+- **Expandable detail** — clicking an event opens an in-place panel with full date, location, and price range, plus links out to tickets, a map, and a web search.
+- **Search and filtering** — by category, by day, and by free-text over event titles and venues.
 
 ## Setup
 
@@ -74,8 +76,10 @@ The web app deploys to Vercel from this repo, with the root directory set to `ap
 ```
 apps/web/                 Next.js app — UI and API routes
   app/page.tsx            The events interface
+  app/globals.css         Styles and theming
   app/api/events/         Read-only events API (route handler)
   lib/db.ts               Shared database pool
+  public/                 Static assets
 db/schema.sql             Database schema
 packages/core/            Shared types and normalisation logic
 services/aggregator/      Source adapters and the aggregation job
@@ -88,5 +92,5 @@ Note: `services/api/` contains the original standalone API and is retained for r
 ## Roadmap
 
 - Broader coverage from arts-focused sources (SISTIC and direct venue listings), which need scraping or a data feed rather than a public API
-- A responsive desktop layout that uses wider screens fully
+- Affiliate ticket links for monetisation
 - A React Native client reusing the same API
