@@ -47,6 +47,40 @@ body {
   padding: 0 24px 80px;
 }
 
+/* Desktop: editorial two-column with a standing sidebar. */
+@media (min-width: 900px) {
+  .page {
+    max-width: 1180px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    column-gap: 64px;
+    align-items: start;
+    padding: 0 40px 80px;
+  }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    padding-top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .content { min-width: 0; padding-top: 40px; }
+  .colophon { grid-column: 1 / -1; }
+
+  .masthead {
+    border-bottom: none;
+    padding: 40px 0 28px;
+  }
+  .controls {
+    position: static;
+    background: transparent;
+    border-bottom: none;
+    padding: 0;
+  }
+}
+
 /* ---- Masthead ---- */
 .masthead {
   padding: 40px 0 32px;

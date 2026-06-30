@@ -132,6 +132,7 @@ export default function EventsPage() {
 
   return (
     <main className="page">
+      <div className="sidebar">
       <header className="masthead">
         <div className="masthead-top">
           <span className="eyebrow">Singapore</span>
@@ -179,7 +180,9 @@ export default function EventsPage() {
           ))}
         </nav>
       </div>
+      </div>
 
+      <div className="content">
       {loading ? (
         <p className="state">Gathering what&rsquo;s on…</p>
       ) : events.length === 0 ? (
@@ -287,6 +290,7 @@ export default function EventsPage() {
           ))}
         </div>
       )}
+      </div>
 
       <footer className="colophon">
         <span>What&rsquo;s On SG</span>
