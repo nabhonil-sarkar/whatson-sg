@@ -91,6 +91,16 @@ function dateKey(iso: string): string {
   });
 }
 
+// A stable per-day key in local time (YYYY-MM-DD) for matching the strip
+// selection against each event's date.
+function dayKeyOf(iso: string | Date): string {
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [category, setCategory] = useState<string>("all");
@@ -98,6 +108,7 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Default to light mode. Visitors switch to dark with the toggle.
   useEffect(() => {
@@ -121,9 +132,29 @@ export default function EventsPage() {
     return () => clearTimeout(t);
   }, [category, search]);
 
+  // Build the strip of the next 14 days, marking which have events so empty
+  // days can be shown dimmed and aren't misleading to tap.
+  const today = new Date();
+  const daysWithEvents = new Set(events.map((e) => dayKeyOf(e.starts_at)));
+  const stripDays = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const key = dayKeyOf(d);
+    return {
+      key,
+      weekday: d.toLocaleDateString("en-SG", { weekday: "short" }),
+      date: d.getDate(),
+      hasEvents: daysWithEvents.has(key),
+    };
+  });
+
+  // Apply the day filter (if any) before grouping.
+  const visibleEvents = selectedDay
+    ? events.filter((e) => dayKeyOf(e.starts_at) === selectedDay)
+    : events;
+
   // Build ordered date groups.
   const groups: { key: string; items: Event[] }[] = [];
-  for (const e of events) {
+  for (const e of visibleEvents) {
     const key = dateKey(e.starts_at);
     const last = groups[groups.length - 1];
     if (last && last.key === key) last.items.push(e);
@@ -183,10 +214,32 @@ export default function EventsPage() {
       </div>
 
       <div className="content">
+      {!loading && events.length > 0 && (
+        <div className="datestrip" role="group" aria-label="Filter by day">
+          <button
+            className={`day-chip day-chip--all ${selectedDay === null ? "day-chip--on" : ""}`}
+            onClick={() => setSelectedDay(null)}
+          >
+            <span className="day-wd">All</span>
+            <span className="day-num">★</span>
+          </button>
+          {stripDays.map((d) => (
+            <button
+              key={d.key}
+              className={`day-chip ${selectedDay === d.key ? "day-chip--on" : ""} ${!d.hasEvents ? "day-chip--empty" : ""}`}
+              onClick={() => setSelectedDay(selectedDay === d.key ? null : d.key)}
+              disabled={!d.hasEvents}
+            >
+              <span className="day-wd">{d.weekday}</span>
+              <span className="day-num">{d.date}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {loading ? (
         <p className="state">Gathering what&rsquo;s on…</p>
-      ) : events.length === 0 ? (
-        <p className="state">Nothing here yet. Try another category.</p>
+      ) : groups.length === 0 ? (
+        <p className="state">Nothing on this day. Try another.</p>
       ) : (
         <div className="listings">
           {groups.map((g) => (
