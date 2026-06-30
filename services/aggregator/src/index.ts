@@ -6,13 +6,11 @@ import {
 
 import * as ticketmaster from "./sources/ticketmaster.js";
 import * as sgculturepass from "./sources/sgculturepass.js";
-import * as mock from "./sources/mock.js";
 
 // Register every source here. Adding a new venue = one import + one line.
 const SOURCES: Array<{ name: string; fetchEvents: () => Promise<NormalizedEvent[]> }> = [
   { name: "ticketmaster",   fetchEvents: ticketmaster.fetchEvents },
   { name: "sgculturepass",  fetchEvents: sgculturepass.fetchEvents },
-  { name: "mock",           fetchEvents: mock.fetchEvents },
 ];
 
 const pool = new Pool({
