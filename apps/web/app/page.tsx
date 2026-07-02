@@ -15,6 +15,7 @@ interface Event {
   price_max: number | null;
   currency: string | null;
   ticket_url: string | null;
+  image_url: string | null;
   source: string;
 }
 
@@ -301,6 +302,17 @@ export default function EventsPage() {
 
                       {open && (
                         <div className="event-detail">
+                          {e.image_url && (
+                            <img
+                              className="detail-image"
+                              src={e.image_url}
+                              alt={e.title}
+                              loading="lazy"
+                              onError={(ev) => {
+                                (ev.currentTarget as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          )}
                           <dl className="detail-facts">
                             <div>
                               <dt>When</dt>

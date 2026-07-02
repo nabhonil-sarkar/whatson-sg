@@ -339,6 +339,17 @@ body {
   padding: 4px 0 22px 82px;
   animation: detail-in 0.2s ease;
 }
+.detail-image {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 18px;
+  background: var(--tag-bg);
+}
 @keyframes detail-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
