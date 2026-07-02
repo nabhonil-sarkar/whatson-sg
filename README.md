@@ -1,39 +1,41 @@
 # What's On SG
 
-A live, self-updating guide to events in Singapore — concerts, theatre, art, and museum exhibitions — aggregated from ticketing sources into a single, searchable feed.
-
-I built this to solve a real gap: there's no single place to see everything happening across the city, since the data is scattered across ticketing platforms and individual venue sites. The site refreshes itself daily with no manual involvement.
+A live, self-updating guide to events in Singapore — concerts, theatre, art, and museum exhibitions — aggregated from multiple sources into one searchable feed. It refreshes itself daily with no manual involvement.
 
 ## Architecture
 
-The database is the seam. A scheduled aggregator writes to it; the web app only reads from it. That decoupling means sources and the front end evolve independently.
-
 ```
-Sources → Aggregator (daily) → Postgres (Supabase) → Next.js app (API routes + UI)
+Sources → Aggregator (daily) → Postgres (Supabase) → Next.js app (API + UI)
 ```
 
-- **Aggregator** — fetches from each source, normalises to a common shape, classifies into categories, deduplicates, and upserts. Idempotent, so running it repeatedly never creates duplicates and it's safe on a schedule.
-- **Next.js app** — serves both the read-only API (as a route handler) and the user interface from one deployable unit. The API supports category filtering and full-text search over titles and venues.
+The database is the seam: a scheduled aggregator writes to it, the web app only reads. Sources and front end evolve independently. Each source is a self-contained adapter that normalises its payload into a shared `NormalizedEvent` type, so adding one is a single new file plus a line in the registry. The aggregator is idempotent — safe to run repeatedly on a schedule.
 
-Each source is a self-contained adapter that converts the provider's payload into a common `NormalizedEvent` type, so adding a venue or platform is one new file plus one line in the source registry.
+## Sources
+
+- **Ticketmaster Discovery API** — commercial concerts and touring shows, via the official API.
+- **SG Culture Pass** — local arts and heritage events, which commercial ticketing misses. This source has no published API; I found its search endpoint by inspecting the site's network traffic, reverse-engineered its AWS Kendra-style response schema, and replicated the browser headers needed to pass its CloudFront checks.
+
+## Cross-source de-duplication
+
+The `(source, source_id)` constraint stops duplicates within a source, but the same event on two platforms has two different ids. So after fetching, the aggregator runs a fuzzy pass: normalise titles, score them by token (Jaccard) similarity, and treat two events as one only when similarity is high **and** they share a date — keeping the richer record. The conservative threshold errs toward keeping a borderline duplicate over hiding a distinct event.
 
 ## Stack
 
-TypeScript throughout. Next.js (App Router) for the web app and its API routes, PostgreSQL via Supabase with the `pg` driver, and the Ticketmaster Discovery API as the first live source. Deployed on Vercel; daily aggregation runs as a scheduled GitHub Action.
+TypeScript throughout. Next.js (App Router) for the UI and API routes, PostgreSQL via Supabase. Deployed on Vercel; daily aggregation runs as a scheduled GitHub Action.
 
 ## Features
 
-- **Daily auto-update** — a GitHub Action runs the aggregator every morning, so the live site stays current without anyone touching it.
-- **Editorial interface** — events grouped under date headings (Today, Tomorrow, then by weekday), with a serif/sans typographic pairing.
-- **Responsive layout** — a two-column layout with a standing sidebar on desktop that collapses to a single column on mobile.
-- **Light and dark mode** — light by default, with a toggle.
-- **Date strip** — a slim row of upcoming days for filtering the listings to a single day; days without events are shown inactive.
-- **Expandable detail** — clicking an event opens an in-place panel with full date, location, and price range, plus links out to tickets, a map, and a web search.
-- **Search and filtering** — by category, by day, and by free-text over event titles and venues.
+- Daily auto-update via GitHub Action
+- Editorial interface, events grouped by date
+- Responsive two-column desktop layout, single column on mobile
+- Light and dark mode
+- Date strip for filtering to a single day
+- Expandable detail panel with ticket, map, and search links
+- Search and filtering by category, day, and free text
 
 ## Setup
 
-Requires Node.js (LTS) and a PostgreSQL database. I use Supabase, but any Postgres works.
+Requires Node.js (LTS) and PostgreSQL (I use Supabase; any Postgres works).
 
 ```bash
 git clone https://github.com/nabhonil-sarkar/whatson-sg.git
@@ -41,56 +43,43 @@ cd whatson-sg
 npm install
 ```
 
-Create the database schema by running the contents of `db/schema.sql` against your database (the Supabase SQL editor works, or `psql`).
-
-Then provide credentials in two places:
-
-Project root `.env` — used by the aggregator:
+Create the schema from `db/schema.sql`, then set credentials in two places:
 
 ```
+# .env (aggregator)
 DATABASE_URL=your_postgres_connection_string
-TICKETMASTER_API_KEY=your_key        # optional — runs on sample data without it
-```
+TICKETMASTER_API_KEY=your_key        # optional
 
-`apps/web/.env.local` — used by the Next.js app's API routes:
-
-```
+# apps/web/.env.local (web app)
 DATABASE_URL=your_postgres_connection_string
 ```
-
-## Running it
 
 ```bash
-npm run aggregate   # fetch events into the database
-npm run web         # start the app (UI + API) on :3000
+npm run aggregate   # populate the database
+npm run web         # start UI + API on :3000
 ```
 
-Run the aggregator once to populate the database, then start the web app. Without a Ticketmaster key the aggregator falls back to sample data, so the app is runnable out of the box.
+A `mock` sample source is included as a no-credentials fallback; it's unregistered in normal operation.
 
 ## Deployment
 
-The web app deploys to Vercel from this repo, with the root directory set to `apps/web` and `DATABASE_URL` provided as an environment variable. Daily aggregation runs separately as a scheduled GitHub Action (`.github/workflows/aggregate.yml`), which reads `DATABASE_URL` and `TICKETMASTER_API_KEY` from repository secrets — keeping the always-on refresh independent of the web host.
+The web app deploys to Vercel (root directory `apps/web`, `DATABASE_URL` as an env var). Daily aggregation runs independently as a GitHub Action (`.github/workflows/aggregate.yml`) reading its secrets from the repo.
 
 ## Project layout
 
 ```
-apps/web/                 Next.js app — UI and API routes
-  app/page.tsx            The events interface
-  app/globals.css         Styles and theming
-  app/api/events/         Read-only events API (route handler)
-  lib/db.ts               Shared database pool
-  public/                 Static assets
-db/schema.sql             Database schema
-packages/core/            Shared types and normalisation logic
-services/aggregator/      Source adapters and the aggregation job
-  src/sources/            One adapter per source
-.github/workflows/        Scheduled aggregation
+apps/web/            Next.js app — UI and API routes
+db/schema.sql        Database schema
+packages/core/       Shared types, normalisation, and dedup logic
+services/aggregator/ Source adapters and the aggregation job
+.github/workflows/   Scheduled aggregation
 ```
 
-Note: `services/api/` contains the original standalone API and is retained for reference; the live API now runs inside the Next.js app.
+`services/api/` holds the original standalone API, kept for reference; the live API now runs inside the Next.js app.
 
 ## Roadmap
 
-- Broader coverage from arts-focused sources (SISTIC and direct venue listings), which need scraping or a data feed rather than a public API
-- Affiliate ticket links for monetisation
+- Broader coverage from more arts and community sources
+- Improved venue extraction where location is embedded in free text
+- Separate views for distinct content types (events, things to do)
 - A React Native client reusing the same API
